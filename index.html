@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimCity Lite - Cyber Grid Builder</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Full-screen simulation Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Main HUD (Top Bar) -->
+    <header class="hud-top glass">
+        <div class="hud-brand">
+            <h1 class="logo">SIMCITY<span>LITE</span></h1>
+        </div>
+        
+        <div class="hud-stat-group">
+            <div class="hud-stat" id="stat-date">
+                <span class="label">DATE</span>
+                <span class="value">01 Jan 2026</span>
+            </div>
+            <div class="hud-stat" id="stat-population">
+                <span class="label">POPULATION</span>
+                <span class="value">0</span>
+            </div>
+            <div class="hud-stat" id="stat-funds">
+                <span class="label">FUNDS</span>
+                <span class="value">$100,000</span>
+            </div>
+            <div class="hud-stat" id="stat-happiness">
+                <span class="label">HAPPINESS</span>
+                <span class="value">100%</span>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="happiness-bar" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="rci-indicator">
+            <div class="rci-label">DEMAND</div>
+            <div class="rci-bars">
+                <div class="rci-bar residential" id="rci-res" style="height: 50%"></div>
+                <div class="rci-bar commercial" id="rci-com" style="height: 30%"></div>
+                <div class="rci-bar industrial" id="rci-ind" style="height: 40%"></div>
+            </div>
+            <div class="rci-labels">
+                <span>R</span><span>C</span><span>I</span>
+            </div>
+        </div>
+
+        <div class="speed-controls">
+            <button class="speed-btn" id="speed-pause" title="Pause">⏸</button>
+            <button class="speed-btn active" id="speed-1x" title="Normal Speed">▶</button>
+            <button class="speed-btn" id="speed-2x" title="Fast Speed">▶▶</button>
+            <button class="speed-btn" id="speed-5x" title="Hyper Speed">⚡</button>
+        </div>
+    </header>
+
+    <!-- Left Toolbar (Construction Panel) -->
+    <nav class="toolbar-left glass">
+        <div class="panel-header">CONSTRUCT</div>
+        <div class="tool-grid">
+            <button class="tool-btn active" data-tool="select" title="Inspect / Select">
+                <span class="icon">🔍</span>
+                <span class="name">Inspect</span>
+            </button>
+            
+            <button class="tool-btn" data-tool="road" data-cost="10" title="Build Road ($10)">
+                <span class="icon">🛣️</span>
+                <span class="name">Road</span>
+                <span class="cost">$10</span>
+            </button>
+
+            <button class="tool-btn" data-tool="powerline" data-cost="5" title="Build Power Line ($5)">
+                <span class="icon">⚡</span>
+                <span class="name">Power Line</span>
+                <span class="cost">$5</span>
+            </button>
+
+            <button class="tool-btn" data-tool="waterpipe" data-cost="5" title="Build Water Pipe ($5)">
+                <span class="icon">💧</span>
+                <span class="name">Pipe</span>
+                <span class="cost">$5</span>
+            </button>
+
+            <button class="tool-btn" data-tool="residential" data-cost="50" title="Zone Residential ($50)">
+                <span class="icon">🟢</span>
+                <span class="name">Res. Zone</span>
+                <span class="cost">$50</span>
+            </button>
+
+            <button class="tool-btn" data-tool="commercial" data-cost="60" title="Zone Commercial ($60)">
+                <span class="icon">🔵</span>
+                <span class="name">Com. Zone</span>
+                <span class="cost">$60</span>
+            </button>
+
+            <button class="tool-btn" data-tool="industrial" data-cost="80" title="Zone Industrial ($80)">
+                <span class="icon">🟡</span>
+                <span class="name">Ind. Zone</span>
+                <span class="cost">$80</span>
+            </button>
+
+            <button class="tool-btn" data-tool="powerplant" data-cost="3000" title="Build Coal Power Plant ($3,000)">
+                <span class="icon">🏭</span>
+                <span class="name">Power Plant</span>
+                <span class="cost">$3.0K</span>
+            </button>
+
+            <button class="tool-btn" data-tool="watertower" data-cost="1500" title="Build Water Tower ($1,500)">
+                <span class="icon">🚰</span>
+                <span class="name">Water Tower</span>
+                <span class="cost">$1.5K</span>
+            </button>
+
+            <button class="tool-btn" data-tool="police" data-cost="1000" title="Build Police Station ($1,000)">
+                <span class="icon">👮</span>
+                <span class="name">Police Stn</span>
+                <span class="cost">$1.0K</span>
+            </button>
+
+            <button class="tool-btn" data-tool="fire" data-cost="1000" title="Build Fire Station ($1,000)">
+                <span class="icon">🚒</span>
+                <span class="name">Fire Stn</span>
+                <span class="cost">$1.0K</span>
+            </button>
+
+            <button class="tool-btn" data-tool="park" data-cost="200" title="Build Park ($200)">
+                <span class="icon">🌳</span>
+                <span class="name">Park</span>
+                <span class="cost">$200</span>
+            </button>
+
+            <button class="tool-btn destroy" data-tool="bulldoze" title="Clear cell ($10)">
+                <span class="icon">🚜</span>
+                <span class="name">Bulldoze</span>
+                <span class="cost">$10</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Right Side Panel (Overlays & Disasters) -->
+    <aside class="panel-right glass">
+        <div class="panel-section">
+            <div class="panel-header">MAP OVERLAYS</div>
+            <div class="overlay-buttons">
+                <button class="overlay-btn active" data-overlay="normal">Default Map</button>
+                <button class="overlay-btn" data-overlay="power">Power Grid</button>
+                <button class="overlay-btn" data-overlay="water">Water Grid</button>
+                <button class="overlay-btn" data-overlay="pollution">Pollution Heatmap</button>
+                <button class="overlay-btn" data-overlay="landvalue">Land Value</button>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <div class="panel-header">DISASTER TRIGGER</div>
+            <div class="disaster-buttons">
+                <button class="disaster-btn" id="disaster-fire">🔥 Outbreak</button>
+                <button class="disaster-btn" id="disaster-meteor">☄️ Meteor Strike</button>
+                <button class="disaster-btn" id="disaster-earthquake">🫨 Earthquake</button>
+            </div>
+        </div>
+
+        <div class="panel-section inspector-panel" id="inspector-panel">
+            <div class="panel-header">INSPECTOR</div>
+            <div class="inspector-content">
+                <div class="inspector-empty">Select a tile on the map to inspect its parameters.</div>
+                <div class="inspector-data hidden">
+                    <div class="inspector-row"><span class="lbl">Type:</span> <span class="val" id="insp-type">-</span></div>
+                    <div class="inspector-row"><span class="lbl">Location:</span> <span class="val" id="insp-loc">-</span></div>
+                    <div class="inspector-row"><span class="lbl">Electricity:</span> <span class="val" id="insp-power">-</span></div>
+                    <div class="inspector-row"><span class="lbl">Water supply:</span> <span class="val" id="insp-water">-</span></div>
+                    <div class="inspector-row"><span class="lbl">Land Value:</span> <span class="val" id="insp-val">-</span></div>
+                    <div class="inspector-row"><span class="lbl">Pollution:</span> <span class="val" id="insp-pollution">-</span></div>
+                    <div class="inspector-row"><span class="lbl">Crime:</span> <span class="val" id="insp-crime">-</span></div>
+                    <div class="inspector-row"><span class="lbl">Status:</span> <span class="val" id="insp-status">-</span></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Bottom Left System Controls & Sound -->
+    <div class="hud-bottom-left glass">
+        <div class="audio-toggle">
+            <button id="sound-btn" title="Toggle Sound">🔊 Sound: On</button>
+        </div>
+        <div class="save-controls">
+            <button id="save-btn" title="Save City to Browser Storage">Save</button>
+            <button id="load-btn" title="Load City from Browser Storage">Load</button>
+            <button id="reset-btn" title="Start a Fresh City" class="reset-danger">Reset</button>
+        </div>
+    </div>
+
+    <!-- Info/Tutorial Dialog Modal (Shown initially) -->
+    <div class="modal-overlay" id="intro-modal">
+        <div class="modal-content glass">
+            <h2>Welcome to SimCity Lite</h2>
+            <p class="subtitle">An advanced grid-based isometric builder</p>
+            <div class="instructions">
+                <div class="inst-step">
+                    <span class="step-num">1</span>
+                    <p>Build <strong>Power Plants</strong> and <strong>Water Towers</strong> to generate utilities.</p>
+                </div>
+                <div class="inst-step">
+                    <span class="step-num">2</span>
+                    <p>Connect utility sources to zones using <strong>Power Lines</strong>, <strong>Pipes</strong>, or <strong>Roads</strong>.</p>
+                </div>
+                <div class="inst-step">
+                    <span class="step-num">3</span>
+                    <p>Establish <strong>Residential (R)</strong>, <strong>Commercial (C)</strong>, and <strong>Industrial (I)</strong> zones to attract citizens.</p>
+                </div>
+                <div class="inst-step">
+                    <span class="step-num">4</span>
+                    <p>Add <strong>Parks</strong>, <strong>Police</strong>, and <strong>Fire Stations</strong> to increase safety, reduce pollution, and raise land values to spur high-rise development.</p>
+                </div>
+            </div>
+            <div class="controls-guide">
+                <strong>Controls:</strong> Left-click to inspect or build | Left-click + Drag to pan | Mouse Scroll to zoom in/out.
+            </div>
+            <button class="modal-close-btn" id="start-game-btn">BEGIN SIMULATION</button>
+        </div>
+    </div>
+
+    <!-- Game scripts -->
+    <script type="module" src="js/game.js"></script>
+</body>
+</html>
