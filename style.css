@@ -1,23 +1,23 @@
 /* --- Design System & Reset --- */
 :root {
-    --bg-dark: #070913;
-    --panel-bg: rgba(13, 17, 33, 0.7);
-    --panel-border: rgba(0, 242, 254, 0.2);
+    --bg-dark: #121824;
+    --panel-bg: rgba(23, 28, 41, 0.85);
+    --panel-border: rgba(255, 255, 255, 0.08);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     
-    /* Neon Theme Accents */
-    --neon-cyan: #00f2fe;
-    --neon-green: #39ff14;
-    --neon-blue: #0099ff;
-    --neon-yellow: #ffb700;
-    --neon-purple: #bd00ff;
-    --neon-danger: #ff2a5f;
-    --neon-success: #10b981;
+    /* Realistic Colors & Accents */
+    --neon-cyan: #3b82f6;      /* Classic Blue Accent */
+    --neon-green: #22c55e;     /* Residential Green */
+    --neon-blue: #2563eb;      /* Commercial Blue */
+    --neon-yellow: #f59e0b;    /* Industrial Orange */
+    --neon-purple: #8b5cf6;    /* Secondary/Transit purple */
+    --neon-danger: #ef4444;    /* Danger Red */
+    --neon-success: #10b981;   /* Emerald Green */
     
     /* Font Families */
-    --font-display: 'Orbitron', sans-serif;
-    --font-sans: 'Rajdhani', sans-serif;
+    --font-display: 'Outfit', sans-serif;
+    --font-sans: 'Inter', sans-serif;
 }
 
 * {
@@ -62,8 +62,8 @@ body {
 }
 
 .glass:hover {
-    border-color: rgba(0, 242, 254, 0.4);
-    box-shadow: 0 8px 32px 0 rgba(0, 242, 254, 0.1);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(59, 130, 246, 0.15);
 }
 
 /* --- HUD Top Bar --- */
@@ -257,7 +257,7 @@ body {
     letter-spacing: 2px;
     color: var(--neon-cyan);
     text-align: center;
-    border-bottom: 1px solid rgba(0, 242, 254, 0.2);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.25);
     padding-bottom: 6px;
     margin-bottom: 6px;
     font-weight: 700;
@@ -280,7 +280,7 @@ body {
     background: rgba(0, 0, 0, 0.1);
 }
 .tool-grid::-webkit-scrollbar-thumb {
-    background: rgba(0, 242, 254, 0.2);
+    background: rgba(59, 130, 246, 0.25);
     border-radius: 2px;
 }
 
