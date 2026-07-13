@@ -13,15 +13,19 @@ class GameController {
         this.renderer = new Renderer(this.canvas, this.sim, this.disasters);
         this.ui = new UIManager(this.sim, this.renderer, this.disasters);
 
-        // Interaction state
-        this.isDragging = false;
-        this.dragged = false;
+        // Interaction States
+        this.isLeftDown = false;
+        this.isRightDown = false;
         this.lastX = 0;
         this.lastY = 0;
         
+        // Anti-repetitive double build checks on left-drag
+        this.lastBuiltX = null;
+        this.lastBuiltY = null;
+        
         // Simulation loops
         this.simInterval = null;
-        this.simSpeed = 1000; // ms per simulated day (Normal speed = 1x)
+        this.simSpeed = 1000; // ms per simulated day
         
         this.initCanvas();
         this.bindEvents();
@@ -34,7 +38,6 @@ class GameController {
             this.canvas.width = window.innerWidth;
             this.canvas.height = window.innerHeight;
             
-            // Adjust camera defaults if not set
             if (this.renderer.offsetX === 0 && this.renderer.offsetY === 0) {
                 this.renderer.offsetX = this.canvas.width / 2;
                 this.renderer.offsetY = this.canvas.height / 3;
@@ -43,48 +46,90 @@ class GameController {
         window.addEventListener('resize', resize);
         resize();
         
-        // Center the camera on grid start
         this.renderer.offsetX = this.canvas.width / 2;
         this.renderer.offsetY = this.canvas.height / 4;
         this.renderer.zoom = 1.0;
     }
 
     bindEvents() {
-        // --- Drag & Click Mouse Events ---
+        // Prevent default Right Click context menu on the simulation viewport
+        this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // --- Mouse Down ---
         this.canvas.addEventListener('mousedown', (e) => {
-            this.isDragging = true;
-            this.dragged = false;
-            this.lastX = e.clientX;
-            this.lastY = e.clientY;
+            const rect = this.canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Resolve clicked cell
+            const grid = this.renderer.screenToGrid(clickX, clickY);
+
+            if (e.button === 0) {
+                // Left Mouse Button: Click to select/build, or start drag paint-building
+                this.isLeftDown = true;
+                this.lastBuiltX = null;
+                this.lastBuiltY = null;
+                
+                // Build/Select immediately on click down
+                this.handleGridAction(grid.x, grid.y, false);
+            } 
+            else if (e.button === 2 || e.button === 1) {
+                // Right or Middle Mouse Button: Start camera panning
+                this.isRightDown = true;
+                this.lastX = e.clientX;
+                this.lastY = e.clientY;
+            }
         });
 
+        // --- Mouse Move ---
         this.canvas.addEventListener('mousemove', (e) => {
-            if (!this.isDragging) return;
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
 
-            const dx = e.clientX - this.lastX;
-            const dy = e.clientY - this.lastY;
+            // Resolve hovered coordinates
+            const grid = this.renderer.screenToGrid(mouseX, mouseY);
 
-            if (Math.hypot(dx, dy) > 2) {
-                this.dragged = true;
+            // Feed hovered indices to the renderer
+            this.renderer.hoverX = grid.x;
+            this.renderer.hoverY = grid.y;
+            this.renderer.selectedTool = this.ui.selectedTool;
+            this.renderer.selectedCost = this.ui.selectedCost;
+
+            // 1. Camera Panning (Right Click Drag)
+            if (this.isRightDown) {
+                const dx = e.clientX - this.lastX;
+                const dy = e.clientY - this.lastY;
+
+                this.renderer.offsetX += dx;
+                this.renderer.offsetY += dy;
+
+                this.lastX = e.clientX;
+                this.lastY = e.clientY;
             }
 
-            this.renderer.offsetX += dx;
-            this.renderer.offsetY += dy;
-
-            this.lastX = e.clientX;
-            this.lastY = e.clientY;
-        });
-
-        this.canvas.addEventListener('mouseup', (e) => {
-            this.isDragging = false;
-
-            // If mouse didn't drag, count it as a click action
-            if (!this.dragged) {
-                this.handleGridClick(e.clientX, e.clientY);
+            // 2. Drag Paint-Building (Left Click Drag)
+            if (this.isLeftDown && this.ui.selectedTool !== 'select') {
+                this.handleGridAction(grid.x, grid.y, true); // true = paint-building drag mode
             }
         });
 
-        // --- Zoom Event ---
+        // --- Mouse Up / Leave ---
+        const resetMouseStates = () => {
+            this.isLeftDown = false;
+            this.isRightDown = false;
+            this.lastBuiltX = null;
+            this.lastBuiltY = null;
+        };
+
+        this.canvas.addEventListener('mouseup', resetMouseStates);
+        this.canvas.addEventListener('mouseleave', () => {
+            resetMouseStates();
+            this.renderer.hoverX = null;
+            this.renderer.hoverY = null;
+        });
+
+        // --- Scroll Zoom ---
         this.canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
             const rect = this.canvas.getBoundingClientRect();
@@ -94,13 +139,12 @@ class GameController {
             const zoomIntensity = 0.08;
             const factor = e.deltaY < 0 ? (1 + zoomIntensity) : (1 - zoomIntensity);
 
-            // Zoom centered towards mouse cursor
             this.renderer.offsetX = mouseX - (mouseX - this.renderer.offsetX) * factor;
             this.renderer.offsetY = mouseY - (mouseY - this.renderer.offsetY) * factor;
             this.renderer.zoom = Math.max(0.4, Math.min(2.5, this.renderer.zoom * factor));
         }, { passive: false });
 
-        // --- Speed Change Handler ---
+        // --- Speed Change Custom Event ---
         window.addEventListener('changeSpeed', (e) => {
             const mult = e.detail.multiplier;
             if (mult === 0) {
@@ -114,44 +158,41 @@ class GameController {
         });
     }
 
-    // --- Resolve Tile Click Action ---
-    handleGridClick(screenX, screenY) {
-        const rect = this.canvas.getBoundingClientRect();
-        const clientX = screenX - rect.left;
-        const clientY = screenY - rect.top;
-
-        // Convert coordinates back to isometric math grid indices
-        const grid = this.renderer.screenToGrid(clientX, clientY);
-
-        if (!this.sim.isValidCoords(grid.x, grid.y)) {
-            // Clicked outside active grid
-            this.ui.clearInspector();
-            return;
-        }
+    // --- Core Action Executor (Build or Select) ---
+    handleGridAction(gridX, gridY, isDragPainting) {
+        if (!this.sim.isValidCoords(gridX, gridY)) return;
 
         const tool = this.ui.selectedTool;
 
+        // Inspect Mode
         if (tool === 'select') {
-            // Inspect mode
-            this.ui.updateInspector(grid.x, grid.y);
+            if (!isDragPainting) {
+                this.ui.updateInspector(gridX, gridY);
+            }
+            return;
+        }
+
+        // Build/Bulldoze Mode
+        // Prevent continuous duplicate builds on the exact same tile during drag painting
+        if (this.lastBuiltX === gridX && this.lastBuiltY === gridY) return;
+
+        const cost = this.ui.selectedCost;
+        const success = this.sim.build(gridX, gridY, tool, cost);
+
+        if (success) {
+            this.lastBuiltX = gridX;
+            this.lastBuiltY = gridY;
+            this.ui.updateHUD();
+
+            // Spawn particles
+            this.disasters.spawnExplosionParticles(gridX, gridY, 5);
+
+            // Update details sidebar inspector
+            this.ui.updateInspector(gridX, gridY);
         } else {
-            // Construction Mode
-            const cost = this.ui.selectedCost;
-            const success = this.sim.build(grid.x, grid.y, tool, cost);
-            
-            if (success) {
-                this.ui.updateHUD();
-                
-                // Spawn small dust particles
-                this.disasters.spawnExplosionParticles(grid.x, grid.y, 6);
-                
-                // Keep inspector updated
-                this.ui.updateInspector(grid.x, grid.y);
-            } else {
-                // Flash notification if funds low
-                if (this.sim.funds < cost) {
-                    this.ui.showNotification(`⚠️ Insufficient funds to construct building ($${cost.toLocaleString()})!`);
-                }
+            // Only trigger low funds alerts on initial click down (not during drag paint)
+            if (!isDragPainting && this.sim.funds < cost) {
+                this.ui.showNotification(`⚠️ Insufficient funds to construct building ($${cost.toLocaleString()})!`);
             }
         }
     }
@@ -185,17 +226,12 @@ class GameController {
 
     // --- 60fps Animation Loop ---
     animate() {
-        // Tick disaster and particle physics
         this.disasters.update();
-
-        // Render Canvas
         this.renderer.draw();
-
         requestAnimationFrame(() => this.animate());
     }
 }
 
-// Instantiate game controller on load
 window.addEventListener('load', () => {
     window.game = new GameController();
 });
